@@ -1,0 +1,16 @@
+[package]
+name = "deck"
+version = "0.1.0"
+authors = ["Florian Dehau <work@fdehau.com>"]
+edition = "2018"
+
+[dependencies]
+pulldown-cmark = "0.2.0"
+syntect = "3.0.2"
+structopt = "0.2.14"
+warp = "0.1.13"
+futures = "0.1"
+notify = "4.0.9"
+either = "1.5.1"
+log = "0.4.6"
+pretty_env_logger = "0.3.0"

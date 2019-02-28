@@ -1,0 +1,6 @@
+/target
+**/*.rs.bk
+**/*.log
+/tools/node_modules/
+/slides.html
+/slides.pdf

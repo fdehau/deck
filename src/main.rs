@@ -60,7 +60,7 @@ fn render_html(input: String) -> HTMLOutput {
     let mut in_code_block = false;
     let mut highlighter = None;
     let parser = parser.map(|event| match event {
-        Event::Start(Tag::Rule) => Event::Html(Cow::Borrowed("</div><div class=\"slide\">")),
+        Event::Start(Tag::Rule) => Event::Html(Cow::Borrowed("</div></div><div class=\"slide\"><div class=\"content\">")),
         Event::Start(Tag::CodeBlock(ref lang)) => {
             in_code_block = true;
             let snippet = start_highlighted_html_snippet(theme);
@@ -89,8 +89,8 @@ fn render_html(input: String) -> HTMLOutput {
     // Now we send this new vector of events off to be transformed into HTML
     let mut html = String::with_capacity(input.len());
     html::push_html(&mut html, parser);
-    html.insert_str(0, "<div class=\"slide\">");
-    html.push_str("</div>");
+    html.insert_str(0, "<div class=\"slide\"><div class=\"content\">");
+    html.push_str("</div/></div>");
     HTMLOutput {
         title: "Slides".to_owned(),
         style: include_str!("style.css").to_owned(),

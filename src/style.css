@@ -71,6 +71,10 @@ blockquote {
 }
 
 @media print {
+  body {
+    font-size: 150%;
+  }
+
   .slide {
     width: 100%;
     height: 100%;

@@ -37,17 +37,22 @@ window.addEventListener('load', evt => {
       index++;
       update();
     }
-  }, false)
+  }, false);
 
-  // Setup auto-reload using a websocket transport
-  const uri = `ws://${window.location.host}/ws`;
-  const ws = new WebSocket(uri);
-  ws.onopen = () => {
-    console.log('ws connected')
-  }
-  ws.onmessage = msg => {
-    if (msg.data === 'reload') {
-      window.location.reload()
-    }
+  const query = new URLSearchParams(window.location.search);
+  if (query.get("watch") == "true") {
+    // Setup auto-reload using a websocket transport
+    const uri = 'ws://' + window.location.host + '/ws';
+    const ws = new WebSocket(uri);
+    ws.onopen = () => {
+      console.log('[WS] Connected');
+    };
+    ws.onmessage = msg => {
+      console.log('[WS] Message', msg);
+      const event = JSON.parse(msg.data);
+      if (event.type === 'reload') {
+        window.location.reload();
+      }
+    };
   }
 }, false)

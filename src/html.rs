@@ -1,0 +1,122 @@
+use std::borrow::Cow;
+use std::fmt;
+use std::io;
+
+use pulldown_cmark::{html, Event, Options as MarkdownOptions, Parser, Tag};
+use syntect::easy::HighlightLines;
+use syntect::highlighting::ThemeSet;
+use syntect::html::{
+    start_highlighted_html_snippet, styled_line_to_highlighted_html, IncludeBackground,
+};
+use syntect::parsing::SyntaxSet;
+
+use crate::error::Error;
+
+const DEFAULT_THEME: &'static str = "base16-ocean.dark";
+
+pub struct Output {
+    title: String,
+    style: String,
+    script: String,
+    body: String,
+}
+
+impl fmt::Display for Output {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "<html>")?;
+        writeln!(f, "<head>")?;
+
+        // Meta
+        writeln!(f, "<meta charset=\"utf-8\">")?;
+        writeln!(f, "<title>{}</title>", self.title)?;
+
+        // Style
+        writeln!(f, "<style>")?;
+        writeln!(f, "{}", self.style)?;
+        writeln!(f, "</style>")?;
+        writeln!(f, "<script type=\"text/javascript\">")?;
+        writeln!(f, "{}", self.script)?;
+        writeln!(f, "</script>")?;
+
+        writeln!(f, "<body>")?;
+        writeln!(f, "{}", self.body)?;
+        writeln!(f, "</body>")?;
+
+        writeln!(f, "</head>")?;
+
+        writeln!(f, "</html>")
+    }
+}
+
+pub struct Options {
+    pub theme: Option<String>,
+}
+
+impl Default for Options {
+    fn default() -> Options {
+        Options { theme: None }
+    }
+}
+
+pub fn render(input: String, options: Options) -> Result<Output, Error> {
+    // Load syntax and theme
+    let syntax_set = SyntaxSet::load_defaults_newlines();
+    let theme_set = ThemeSet::load_defaults();
+    let theme_name = options.theme.unwrap_or(DEFAULT_THEME.to_owned());
+    let theme = &theme_set.themes.get(&theme_name).ok_or_else(|| {
+        Error::SyntaxHightlighting(syntect::LoadingError::Io(io::Error::new(
+            io::ErrorKind::NotFound,
+            "Theme not found",
+        )))
+    })?;
+
+    // Create parser
+    let mut opts = MarkdownOptions::empty();
+    opts.insert(MarkdownOptions::ENABLE_TABLES);
+    let parser = Parser::new_ext(&input, opts);
+    let mut in_code_block = false;
+    let mut highlighter = None;
+    let parser = parser.map(|event| match event {
+        Event::Start(Tag::Rule) => Event::Html(Cow::Borrowed(
+            "</div></div><div class=\"slide\"><div class=\"content\">",
+        )),
+        Event::Start(Tag::CodeBlock(ref lang)) => {
+            in_code_block = true;
+            let snippet = start_highlighted_html_snippet(theme);
+            if let Some(syntax) = syntax_set.find_syntax_by_token(lang) {
+                highlighter = Some(HighlightLines::new(syntax, theme));
+            }
+            Event::Html(Cow::Owned(snippet.0))
+        }
+        Event::End(Tag::CodeBlock(_)) => {
+            highlighter = None;
+            Event::Html(Cow::Borrowed("</pre>"))
+        }
+        Event::Text(text) => {
+            if in_code_block {
+                if let Some(ref mut highlighter) = highlighter {
+                    let highlighted = highlighter.highlight(&text, &syntax_set);
+                    let html = styled_line_to_highlighted_html(&highlighted, IncludeBackground::No);
+                    return Event::Html(Cow::Owned(html));
+                }
+            }
+            Event::Text(text)
+        }
+        e => e,
+    });
+
+    let mut html = String::with_capacity(input.len());
+    html::push_html(&mut html, parser);
+    html.insert_str(0, "<div class=\"slide\"><div class=\"content\">");
+    html.push_str("</div></div>");
+    let style = include_str!("style.css");
+    let style = minifier::css::minify(style).map_err(|s| Error::Minification(s))?;
+    let script = include_str!("script.js");
+    let script = minifier::js::minify(script);
+    Ok(Output {
+        title: "Slides".to_owned(),
+        style,
+        script,
+        body: html,
+    })
+}

@@ -27,10 +27,7 @@ enum Event {
 static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
 type Users = Arc<Mutex<HashMap<usize, futures::sync::mpsc::UnboundedSender<Message>>>>;
 
-fn watch_file(
-    input: PathBuf,
-    users: Users,
-) -> Result<impl Future<Item = (), Error = ()>, Error> {
+fn watch_file(input: PathBuf, users: Users) -> Result<impl Future<Item = (), Error = ()>, Error> {
     let mut inotify = Inotify::init()?;
     inotify.add_watch(input, WatchMask::MODIFY)?;
     let stream = inotify
@@ -104,7 +101,6 @@ pub fn start(config: Config) -> Result<(), Error> {
 
     let users = Arc::new(Mutex::new(HashMap::new()));
 
-
     // Setup routes
     let slides = {
         let config = config.clone();
@@ -151,7 +147,6 @@ pub fn start(config: Config) -> Result<(), Error> {
             })
     };
     let routes = slides.or(ws).recover(customize_error);
-
 
     // Configure server
     let addr: SocketAddr = ([127, 0, 0, 1], port).into();

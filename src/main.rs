@@ -41,7 +41,14 @@ fn main() -> Result<(), Error> {
     let cli = Cli::from_args();
 
     pretty_env_logger::formatted_builder()
-        .filter_module("deck", if cli.verbose { log::LevelFilter::Debug } else { log::LevelFilter::Warn })
+        .filter_module(
+            "deck",
+            if cli.verbose {
+                log::LevelFilter::Debug
+            } else {
+                log::LevelFilter::Warn
+            },
+        )
         .init();
 
     match cli.cmd {

@@ -2,7 +2,14 @@
 name = "deck"
 version = "0.1.0"
 authors = ["Florian Dehau <work@fdehau.com>"]
+description = """
+A command line tool to generate HTML presentations from Markdown documents
+"""
 edition = "2018"
+keywords = ["cli", "presentation", "slides", "markdown"]
+repository = "https://github.com/fdehau/deck"
+license = "MIT"
+exclude = ["tools/*"]
 
 [dependencies]
 pulldown-cmark = "0.2"

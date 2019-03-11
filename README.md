@@ -1,4 +1,7 @@
-# Deck
+# Deck
+
+Deck is a command line tool that generates HTML presentations from Markdown
+documents.
 
 ## Todos
 

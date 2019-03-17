@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs;
 use std::io::{self, Read};
 use std::path::PathBuf;
 
@@ -29,7 +29,7 @@ enum Command {
         #[structopt(long = "css")]
         css: Option<PathBuf>,
         #[structopt(long = "js")]
-        js: Option<PathBuf>
+        js: Option<PathBuf>,
     },
     #[structopt(name = "serve")]
     Serve {
@@ -41,6 +41,10 @@ enum Command {
         watch: bool,
         #[structopt(long = "theme")]
         theme: Option<String>,
+        #[structopt(long = "css")]
+        css: Option<PathBuf>,
+        #[structopt(long = "js")]
+        js: Option<PathBuf>,
     },
 }
 
@@ -59,24 +63,25 @@ fn main() -> Result<(), Error> {
         .init();
 
     match cli.cmd {
-        Command::Build { theme, title, css, js } => {
+        Command::Build {
+            theme,
+            title,
+            css,
+            js,
+        } => {
             // Read input from stdin
             let mut input = String::new();
             io::stdin().read_to_string(&mut input)?;
 
             let css = if let Some(path) = css {
-                let mut s = String::new();
-                let mut file = File::open(path)?;
-                file.read_to_string(&mut s)?;
+                let s = fs::read_to_string(path)?;
                 Some(s)
             } else {
                 None
             };
 
             let js = if let Some(path) = js {
-                let mut s = String::new();
-                let mut file = File::open(path)?;
-                file.read_to_string(&mut s)?;
+                let s = fs::read_to_string(path)?;
                 Some(s)
             } else {
                 None
@@ -98,12 +103,16 @@ fn main() -> Result<(), Error> {
             input,
             watch,
             theme,
+            css,
+            js,
         } => {
             let config = server::Config {
                 port,
                 watch,
                 input,
                 theme,
+                css,
+                js,
             };
             server::start(config)?;
         }

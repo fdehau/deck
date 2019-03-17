@@ -62,7 +62,7 @@ impl Default for Options {
             title: None,
             theme: None,
             css: None,
-            js: None
+            js: None,
         }
     }
 }

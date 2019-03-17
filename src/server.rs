@@ -1,8 +1,7 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc, Mutex,
@@ -27,9 +26,14 @@ enum Event {
 static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
 type Users = Arc<Mutex<HashMap<usize, futures::sync::mpsc::UnboundedSender<Message>>>>;
 
-fn watch_file(input: PathBuf, users: Users) -> Result<impl Future<Item = (), Error = ()>, Error> {
+fn watch_files<P>(files: &[P], users: Users) -> Result<impl Future<Item = (), Error = ()>, Error>
+where
+    P: AsRef<Path>,
+{
     let mut inotify = Inotify::init()?;
-    inotify.add_watch(input, WatchMask::MODIFY)?;
+    for file in files {
+        inotify.add_watch(file, WatchMask::MODIFY)?;
+    }
     let stream = inotify
         .event_stream(vec![0; 1024])
         .for_each(move |event| {
@@ -56,20 +60,32 @@ pub struct Config {
     pub watch: bool,
     pub input: PathBuf,
     pub theme: Option<String>,
+    pub css: Option<PathBuf>,
+    pub js: Option<PathBuf>,
 }
 
 fn get_slides(config: Config) -> Result<impl warp::Reply, warp::Rejection> {
-    let file = File::open(config.input).map_err(|err| warp::reject::custom(Error::Io(err)))?;
-    let mut buf_reader = BufReader::new(file);
-    let mut content = String::new();
-    buf_reader
-        .read_to_string(&mut content)
-        .map_err(|err| warp::reject::custom(Error::Io(err)))?;
+    let markdown =
+        fs::read_to_string(config.input).map_err(|err| warp::reject::custom(Error::Io(err)))?;
+    let css = if let Some(path) = config.css {
+        let s = fs::read_to_string(path).map_err(|err| warp::reject::custom(Error::Io(err)))?;
+        Some(s)
+    } else {
+        None
+    };
+    let js = if let Some(path) = config.js {
+        let s = fs::read_to_string(path).map_err(|err| warp::reject::custom(Error::Io(err)))?;
+        Some(s)
+    } else {
+        None
+    };
     let options = html::Options {
         theme: config.theme,
+        css,
+        js,
         ..html::Options::default()
     };
-    let html = html::render(content, options).map_err(|err| warp::reject::custom(err))?;
+    let html = html::render(markdown, options).map_err(|err| warp::reject::custom(err))?;
     Ok(warp::reply::html(format!("{}", html)))
 }
 
@@ -154,8 +170,15 @@ pub fn start(config: Config) -> Result<(), Error> {
     info!("Starting server on {}", addr);
 
     if config.watch {
-        let f = watch_file(config.input.clone(), users)?;
         info!("Watching {} for changes", config.input.to_string_lossy());
+        let mut files = vec![config.input];
+        if let Some(css) = config.css {
+            files.push(css.clone());
+        }
+        if let Some(js) = config.js {
+            files.push(js.clone());
+        }
+        let f = watch_files(&files, users)?;
         tokio::run(server.join(f).map(|_| ()));
     } else {
         tokio::run(server)

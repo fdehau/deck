@@ -26,7 +26,7 @@ enum Command {
     },
     #[structopt(name = "serve")]
     Serve {
-        #[structopt(long = "port", short = "p")]
+        #[structopt(long = "port", short = "p", default_value = "8000")]
         port: u16,
         #[structopt(parse(from_os_str))]
         input: PathBuf,

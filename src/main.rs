@@ -93,7 +93,6 @@ fn main() -> Result<(), Error> {
                 theme,
                 css,
                 js,
-                ..html::Options::default()
             };
             let html = html::render(input, options)?;
             print!("{}", html);

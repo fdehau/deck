@@ -11,7 +11,7 @@ use syntect::parsing::SyntaxSet;
 
 use crate::error::Error;
 
-const DEFAULT_THEME: &'static str = "base16-ocean.dark";
+const DEFAULT_THEME: &str = "base16-ocean.dark";
 
 pub struct Output {
     title: Option<String>,
@@ -71,7 +71,7 @@ pub fn render(input: String, options: Options) -> Result<Output, Error> {
     // Load syntax and theme
     let syntax_set = SyntaxSet::load_defaults_newlines();
     let theme_set = ThemeSet::load_defaults();
-    let theme_name = options.theme.unwrap_or(DEFAULT_THEME.to_owned());
+    let theme_name = options.theme.unwrap_or_else(|| DEFAULT_THEME.to_owned());
     let theme = &theme_set.themes.get(&theme_name).ok_or_else(|| {
         Error::SyntaxHightlighting(syntect::LoadingError::Io(io::Error::new(
             io::ErrorKind::NotFound,

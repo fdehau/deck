@@ -65,16 +65,15 @@ pub struct Config {
 }
 
 fn get_slides(config: Config) -> Result<impl warp::Reply, warp::Rejection> {
-    let markdown =
-        fs::read_to_string(config.input).map_err(|err| warp::reject::custom(Error::Io(err)))?;
+    let markdown = fs::read_to_string(config.input).map_err(warp::reject::custom)?;
     let css = if let Some(path) = config.css {
-        let s = fs::read_to_string(path).map_err(|err| warp::reject::custom(Error::Io(err)))?;
+        let s = fs::read_to_string(path).map_err(warp::reject::custom)?;
         Some(s)
     } else {
         None
     };
     let js = if let Some(path) = config.js {
-        let s = fs::read_to_string(path).map_err(|err| warp::reject::custom(Error::Io(err)))?;
+        let s = fs::read_to_string(path).map_err(warp::reject::custom)?;
         Some(s)
     } else {
         None
@@ -85,11 +84,11 @@ fn get_slides(config: Config) -> Result<impl warp::Reply, warp::Rejection> {
         js,
         ..html::Options::default()
     };
-    let html = html::render(markdown, options).map_err(|err| warp::reject::custom(err))?;
+    let html = html::render(markdown, options).map_err(warp::reject::custom)?;
     Ok(warp::reply::html(format!("{}", html)))
 }
 
-const ERROR_MESSAGE: &'static str = r#"
+const ERROR_MESSAGE: &str = r#"
 <html>
 <body>
     <h1>Deck encountered an expected error</h1>

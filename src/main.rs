@@ -23,6 +23,8 @@ enum Command {
     Build {
         #[structopt(long = "theme")]
         theme: Option<String>,
+        #[structopt(long = "title")]
+        title: Option<String>,
     },
     #[structopt(name = "serve")]
     Serve {
@@ -52,7 +54,7 @@ fn main() -> Result<(), Error> {
         .init();
 
     match cli.cmd {
-        Command::Build { theme } => {
+        Command::Build { theme, title, css } => {
             // Read input from stdin
             let mut input = String::new();
             io::stdin().read_to_string(&mut input)?;
@@ -60,6 +62,7 @@ fn main() -> Result<(), Error> {
             // Render html to stdout
             let options = html::Options {
                 theme,
+                title,
                 ..html::Options::default()
             };
             let html = html::render(input, options)?;

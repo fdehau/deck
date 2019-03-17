@@ -14,7 +14,7 @@ use crate::error::Error;
 const DEFAULT_THEME: &'static str = "base16-ocean.dark";
 
 pub struct Output {
-    title: String,
+    title: Option<String>,
     style: String,
     script: String,
     body: String,
@@ -27,7 +27,9 @@ impl fmt::Display for Output {
 
         // Meta
         writeln!(f, "<meta charset=\"utf-8\">")?;
-        writeln!(f, "<title>{}</title>", self.title)?;
+        if let Some(ref title) = self.title {
+            writeln!(f, "<title>{}</title>", title)?;
+        }
 
         // Style
         writeln!(f, "<style>")?;
@@ -48,12 +50,16 @@ impl fmt::Display for Output {
 }
 
 pub struct Options {
+    pub title: Option<String>,
     pub theme: Option<String>,
 }
 
 impl Default for Options {
     fn default() -> Options {
-        Options { theme: None }
+        Options {
+            title: None,
+            theme: None,
+        }
     }
 }
 
@@ -113,7 +119,7 @@ pub fn render(input: String, options: Options) -> Result<Output, Error> {
     let script = include_str!("script.js");
     let script = minifier::js::minify(script);
     Ok(Output {
-        title: "Slides".to_owned(),
+        title: options.title,
         style,
         script,
         body: html,

@@ -13,7 +13,7 @@
 - [pulldown_cmark](https://github.com/raphlinus/pulldown-cmark) (markdown to html)
 - [syntect](https://github.com/trishume/syntect) (syntax highlighting)
 - [warp](https://github.com/seanmonstar/warp) (local server)
-- [notify](https://github.com/passcod/notify) (automatic reload)
+- [inotify](https://github.com/inotify-rs/inotify) (automatic reload)
 
 ---
 

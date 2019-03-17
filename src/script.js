@@ -1,5 +1,14 @@
 window.addEventListener('load', evt => {
-  let storedIndex = sessionStorage.getItem('index');
+  const query = new URLSearchParams(window.location.search);
+  const isWatching = query.get('watch') == 'true';
+  let storedIndex = null;
+  if (isWatching) {
+    try {
+      storedIndex = sessionStorage.getItem('index');
+    } catch (err) {
+      console.error('Failed to retrieve slide index from sessionStorage', err);
+    }
+  }
   let index = storedIndex === null ? 0 : parseInt(storedIndex);
   const slides = document.getElementsByClassName('slide');
 
@@ -17,7 +26,13 @@ window.addEventListener('load', evt => {
         slide.classList.add('next');
       }
     }
-    sessionStorage.setItem('index', index);
+    if (isWatching) {
+      try {
+        sessionStorage.setItem('index', index);
+      } catch (err) {
+        console.error('Failed to save slide index in sessionStorage', err);
+      }
+    }
   }
 
   update();
@@ -39,8 +54,7 @@ window.addEventListener('load', evt => {
     }
   }, false);
 
-  const query = new URLSearchParams(window.location.search);
-  if (query.get("watch") == "true") {
+  if (isWatching) {
     // Setup auto-reload using a websocket transport
     const uri = 'ws://' + window.location.host + '/ws';
     const ws = new WebSocket(uri);

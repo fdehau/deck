@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/fdehau/deck.svg?branch=master)](https://travis-ci.org/fdehau/deck)
+[![Build Status](https://travis-ci.com/fdehau/deck.svg?branch=master)](https://travis-ci.com/fdehau/deck)
 [![Crate Status](https://img.shields.io/crates/v/deck.svg)](https://crates.io/crates/deck)
 [![Docs Status](https://docs.rs/deck/badge.svg)](https://docs.rs/crate/deck/)
 

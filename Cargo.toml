@@ -12,7 +12,7 @@ license = "MIT"
 exclude = ["tools/*"]
 
 [dependencies]
-pulldown-cmark = "0.2"
+pulldown-cmark = "0.3"
 syntect = "3.0"
 structopt = "0.2"
 warp = "0.1"

@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fmt;
 use std::io;
 
@@ -77,27 +76,27 @@ pub fn render(input: String, options: Options) -> Result<Output, Error> {
     let mut in_code_block = false;
     let mut highlighter = None;
     let parser = parser.map(|event| match event {
-        Event::Start(Tag::Rule) => Event::Html(Cow::Borrowed(
-            "</div></div><div class=\"slide\"><div class=\"content\">",
-        )),
+        Event::Start(Tag::Rule) => Event::Html(
+            "</div></div><div class=\"slide\"><div class=\"content\">".into(),
+        ),
         Event::Start(Tag::CodeBlock(ref lang)) => {
             in_code_block = true;
             let snippet = start_highlighted_html_snippet(theme);
             if let Some(syntax) = syntax_set.find_syntax_by_token(lang) {
                 highlighter = Some(HighlightLines::new(syntax, theme));
             }
-            Event::Html(Cow::Owned(snippet.0))
+            Event::Html(snippet.0.into())
         }
         Event::End(Tag::CodeBlock(_)) => {
             highlighter = None;
-            Event::Html(Cow::Borrowed("</pre>"))
+            Event::Html("</pre>".into())
         }
         Event::Text(text) => {
             if in_code_block {
                 if let Some(ref mut highlighter) = highlighter {
                     let highlighted = highlighter.highlight(&text, &syntax_set);
                     let html = styled_line_to_highlighted_html(&highlighted, IncludeBackground::No);
-                    return Event::Html(Cow::Owned(html));
+                    return Event::Html(html.into());
                 }
             }
             Event::Text(text)

@@ -44,6 +44,7 @@ blockquote {
 
   .previous {
     display: flex;
+    overflow: hidden;
     transform: translate3d(-100%, 0, 0);
   }
 
@@ -53,6 +54,7 @@ blockquote {
 
   .next {
     display: flex;
+    overflow: hidden;
     transform: translate3d(100%, 0, 0);
   }
 

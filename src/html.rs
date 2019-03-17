@@ -52,6 +52,7 @@ impl fmt::Display for Output {
 pub struct Options {
     pub title: Option<String>,
     pub theme: Option<String>,
+    pub css: Option<String>,
 }
 
 impl Default for Options {
@@ -59,6 +60,7 @@ impl Default for Options {
         Options {
             title: None,
             theme: None,
+            css: None,
         }
     }
 }
@@ -82,9 +84,9 @@ pub fn render(input: String, options: Options) -> Result<Output, Error> {
     let mut in_code_block = false;
     let mut highlighter = None;
     let parser = parser.map(|event| match event {
-        Event::Start(Tag::Rule) => Event::Html(
-            "</div></div><div class=\"slide\"><div class=\"content\">".into(),
-        ),
+        Event::Start(Tag::Rule) => {
+            Event::Html("</div></div><div class=\"slide\"><div class=\"content\">".into())
+        }
         Event::Start(Tag::CodeBlock(ref lang)) => {
             in_code_block = true;
             let snippet = start_highlighted_html_snippet(theme);
@@ -114,8 +116,15 @@ pub fn render(input: String, options: Options) -> Result<Output, Error> {
     html::push_html(&mut html, parser);
     html.insert_str(0, "<div class=\"slide\"><div class=\"content\">");
     html.push_str("</div></div>");
-    let style = include_str!("style.css");
-    let style = minifier::css::minify(style).map_err(|s| Error::Minification(s))?;
+
+    // Build inline css
+    let mut style = include_str!("style.css").to_owned();
+    if let Some(custom_css) = options.css {
+        style.push_str(&custom_css);
+    }
+    let style = minifier::css::minify(&style).map_err(|s| Error::Minification(s))?;
+
+    // Build inline js
     let script = include_str!("script.js");
     let script = minifier::js::minify(script);
     Ok(Output {

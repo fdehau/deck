@@ -87,7 +87,7 @@ pub fn render(input: String, options: Options) -> Result<Output, Error> {
     let mut highlighter = None;
     let parser = parser.map(|event| match event {
         Event::Start(Tag::Rule) => {
-            Event::Html("</div></div><div class=\"slide\"><div class=\"content\">".into())
+            Event::Html("</div>\n</div>\n<div class=\"slide\">\n<div class=\"content\">".into())
         }
         Event::Start(Tag::CodeBlock(ref lang)) => {
             in_code_block = true;
@@ -116,8 +116,8 @@ pub fn render(input: String, options: Options) -> Result<Output, Error> {
 
     let mut html = String::with_capacity(input.len());
     html::push_html(&mut html, parser);
-    html.insert_str(0, "<div class=\"slide\"><div class=\"content\">");
-    html.push_str("</div></div>");
+    html.insert_str(0, "<div class=\"slide\">\n<div class=\"content\">\n");
+    html.push_str("</div>\n</div>");
 
     // Build inline css
     let mut style = include_str!("style.css").to_owned();
@@ -138,4 +138,39 @@ pub fn render(input: String, options: Options) -> Result<Output, Error> {
         script,
         body: html,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_render() {
+        let input = r#"
+# Slide 1
+
+This is a **test**
+
+---
+
+# Slide 2
+
+And it should work"#;
+        let output = render(input.into(), Options::default()).expect("Failed to render");
+        assert_eq!(
+            r#"<div class="slide">
+<div class="content">
+<h1>Slide 1</h1>
+<p>This is a <strong>test</strong></p>
+</div>
+</div>
+<div class="slide">
+<div class="content">
+<h1>Slide 2</h1>
+<p>And it should work</p>
+</div>
+</div>"#,
+            output.body
+        );
+    }
 }

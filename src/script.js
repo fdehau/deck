@@ -69,4 +69,4 @@ window.addEventListener('load', evt => {
       }
     };
   }
-}, false)
+}, false);

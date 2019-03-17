@@ -22,12 +22,14 @@ struct Cli {
 enum Command {
     #[structopt(name = "build")]
     Build {
-        #[structopt(long = "theme")]
-        theme: Option<String>,
         #[structopt(long = "title")]
         title: Option<String>,
+        #[structopt(long = "theme")]
+        theme: Option<String>,
         #[structopt(long = "css")]
         css: Option<PathBuf>,
+        #[structopt(long = "js")]
+        js: Option<PathBuf>
     },
     #[structopt(name = "serve")]
     Serve {
@@ -57,7 +59,7 @@ fn main() -> Result<(), Error> {
         .init();
 
     match cli.cmd {
-        Command::Build { theme, title, css } => {
+        Command::Build { theme, title, css, js } => {
             // Read input from stdin
             let mut input = String::new();
             io::stdin().read_to_string(&mut input)?;
@@ -71,11 +73,21 @@ fn main() -> Result<(), Error> {
                 None
             };
 
+            let js = if let Some(path) = js {
+                let mut s = String::new();
+                let mut file = File::open(path)?;
+                file.read_to_string(&mut s)?;
+                Some(s)
+            } else {
+                None
+            };
+
             // Render html to stdout
             let options = html::Options {
+                title,
                 theme,
                 css,
-                title,
+                js,
                 ..html::Options::default()
             };
             let html = html::render(input, options)?;

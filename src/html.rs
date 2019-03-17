@@ -53,6 +53,7 @@ pub struct Options {
     pub title: Option<String>,
     pub theme: Option<String>,
     pub css: Option<String>,
+    pub js: Option<String>,
 }
 
 impl Default for Options {
@@ -61,6 +62,7 @@ impl Default for Options {
             title: None,
             theme: None,
             css: None,
+            js: None
         }
     }
 }
@@ -125,8 +127,11 @@ pub fn render(input: String, options: Options) -> Result<Output, Error> {
     let style = minifier::css::minify(&style).map_err(|s| Error::Minification(s))?;
 
     // Build inline js
-    let script = include_str!("script.js");
-    let script = minifier::js::minify(script);
+    let mut script = include_str!("script.js").to_owned();
+    if let Some(custom_js) = options.js {
+        script.push_str(&custom_js);
+    }
+    let script = minifier::js::minify(&script);
     Ok(Output {
         title: options.title,
         style,

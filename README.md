@@ -23,9 +23,5 @@ deck serve slides.md -w -p 8000
 
 ## Todos
 
-* Load local syntect themes
-
-Maybe:
-
 * Speaker notes
 * Timer

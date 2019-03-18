@@ -65,12 +65,32 @@ pub struct Config {
     pub js: Option<PathBuf>,
 }
 
-fn get_slides(
+struct Paths {
     input: PathBuf,
+    css: Option<PathBuf>,
+    js: Option<PathBuf>,
+}
+
+fn get_slides(
+    paths: Arc<Paths>,
     renderer: Arc<html::Renderer>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let markdown = fs::read_to_string(input).map_err(warp::reject::custom)?;
-    let html = renderer.render(markdown).map_err(warp::reject::custom)?;
+    let css = if let Some(ref path) = paths.css {
+        let s = fs::read_to_string(path).map_err(warp::reject::custom)?;
+        Some(s)
+    } else {
+        None
+    };
+    let js = if let Some(ref path) = paths.js {
+        let s = fs::read_to_string(path).map_err(warp::reject::custom)?;
+        Some(s)
+    } else {
+        None
+    };
+    let markdown = fs::read_to_string(&paths.input).map_err(warp::reject::custom)?;
+    let html = renderer
+        .render(markdown, css, js)
+        .map_err(warp::reject::custom)?;
     Ok(warp::reply::html(format!("{}", html)))
 }
 
@@ -104,34 +124,27 @@ pub fn start(config: Config) -> Result<(), Error> {
 
     // Setup routes
     let slides = {
-        let css = if let Some(ref path) = config.css {
-            let s = fs::read_to_string(path)?;
-            Some(s)
-        } else {
-            None
-        };
-        let js = if let Some(ref path) = config.js {
-            let s = fs::read_to_string(path)?;
-            Some(s)
-        } else {
-            None
-        };
         let options = html::Options {
             theme: config.theme,
             theme_dirs: config.theme_dirs,
-            css,
-            js,
             ..html::Options::default()
         };
         let renderer = {
             let r = html::Renderer::try_new(options)?;
             Arc::new(r)
         };
-        let input = config.input.clone();
+        let paths = {
+            let p = Paths {
+                input: config.input.clone(),
+                js: config.js.clone(),
+                css: config.css.clone(),
+            };
+            Arc::new(p)
+        };
         let slides_index = warp::path("slides").and(warp::path::end());
         warp::get2()
             .and(slides_index)
-            .and(warp::any().map(move || input.clone()))
+            .and(warp::any().map(move || paths.clone()))
             .and(warp::any().map(move || renderer.clone()))
             .and_then(get_slides)
     };

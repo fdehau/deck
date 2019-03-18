@@ -112,13 +112,11 @@ fn main() -> Result<(), Error> {
             let options = html::Options {
                 title,
                 theme,
-                css,
-                js,
                 theme_dirs,
             };
 
             let renderer = html::Renderer::try_new(options)?;
-            let html = renderer.render(input)?;
+            let html = renderer.render(input, css, js)?;
             print!("{}", html);
         }
         Command::Serve {

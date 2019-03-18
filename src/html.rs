@@ -53,8 +53,6 @@ pub struct Options {
     pub title: Option<String>,
     pub theme: Option<String>,
     pub theme_dirs: Vec<PathBuf>,
-    pub css: Option<String>,
-    pub js: Option<String>,
 }
 
 impl Default for Options {
@@ -62,8 +60,6 @@ impl Default for Options {
         Options {
             title: None,
             theme: None,
-            css: None,
-            js: None,
             theme_dirs: Vec::new(),
         }
     }
@@ -74,8 +70,6 @@ pub struct Renderer {
     syntax_set: SyntaxSet,
     theme: Theme,
     title: Option<String>,
-    js: Option<String>,
-    css: Option<String>,
 }
 
 impl Renderer {
@@ -95,12 +89,15 @@ impl Renderer {
             syntax_set,
             theme,
             title: options.title,
-            js: options.js,
-            css: options.css,
         })
     }
 
-    pub fn render(&self, input: String) -> Result<Output, Error> {
+    pub fn render(
+        &self,
+        input: String,
+        css: Option<String>,
+        js: Option<String>,
+    ) -> Result<Output, Error> {
         // Create parser
         let mut opts = MarkdownOptions::empty();
         opts.insert(MarkdownOptions::ENABLE_TABLES);
@@ -144,14 +141,14 @@ impl Renderer {
 
         // Build inline css
         let mut style = include_str!("style.css").to_owned();
-        if let Some(ref custom_css) = self.css {
+        if let Some(ref custom_css) = css {
             style.push_str(custom_css);
         }
         let style = minifier::css::minify(&style).map_err(|s| Error::Minification(s))?;
 
         // Build inline js
         let mut script = include_str!("script.js").to_owned();
-        if let Some(ref custom_js) = self.js {
+        if let Some(ref custom_js) = js {
             script.push_str(custom_js);
         }
         let script = minifier::js::minify(&script);
@@ -181,7 +178,9 @@ This is a **test**
 
 And it should work"#;
         let renderer = Renderer::try_new(Options::default()).expect("Failed to create renderer");
-        let output = renderer.render(input.into()).expect("Failed to render");
+        let output = renderer
+            .render(input.into(), None, None)
+            .expect("Failed to render");
         assert_eq!(
             r#"<div class="slide">
 <div class="content">

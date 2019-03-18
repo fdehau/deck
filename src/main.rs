@@ -26,6 +26,8 @@ enum Command {
         title: Option<String>,
         #[structopt(long = "theme")]
         theme: Option<String>,
+        #[structopt(long = "theme-dir")]
+        theme_dirs: Vec<PathBuf>,
         #[structopt(long = "css")]
         css: Option<PathBuf>,
         #[structopt(long = "js")]
@@ -41,6 +43,8 @@ enum Command {
         watch: bool,
         #[structopt(long = "theme")]
         theme: Option<String>,
+        #[structopt(long = "theme-dir")]
+        theme_dirs: Vec<PathBuf>,
         #[structopt(long = "css")]
         css: Option<PathBuf>,
         #[structopt(long = "js")]
@@ -68,6 +72,7 @@ fn main() -> Result<(), Error> {
             title,
             css,
             js,
+            theme_dirs,
         } => {
             // Read input from stdin
             let mut input = String::new();
@@ -93,8 +98,11 @@ fn main() -> Result<(), Error> {
                 theme,
                 css,
                 js,
+                theme_dirs,
             };
-            let html = html::render(input, options)?;
+
+            let renderer = html::Renderer::try_new(options)?;
+            let html = renderer.render(input)?;
             print!("{}", html);
         }
         Command::Serve {
@@ -102,6 +110,7 @@ fn main() -> Result<(), Error> {
             input,
             watch,
             theme,
+            theme_dirs,
             css,
             js,
         } => {
@@ -110,6 +119,7 @@ fn main() -> Result<(), Error> {
                 watch,
                 input,
                 theme,
+                theme_dirs,
                 css,
                 js,
             };

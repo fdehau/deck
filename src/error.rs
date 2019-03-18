@@ -6,7 +6,8 @@ use std::io;
 pub enum Error {
     Io(io::Error),
     Minification(&'static str),
-    SyntaxHightlighting(syntect::LoadingError),
+    Syntect(syntect::LoadingError),
+    ThemeNotFound,
 }
 
 impl fmt::Display for Error {
@@ -15,7 +16,8 @@ impl fmt::Display for Error {
         match self {
             Io(err) => err.fmt(f),
             Minification(err) => write!(f, "{}", err),
-            SyntaxHightlighting(err) => err.fmt(f),
+            Syntect(err) => err.fmt(f),
+            ThemeNotFound => write!(f, "Theme not found"),
         }
     }
 }
@@ -26,12 +28,19 @@ impl From<io::Error> for Error {
     }
 }
 
+impl From<syntect::LoadingError> for Error {
+    fn from(err: syntect::LoadingError) -> Error {
+        Error::Syntect(err)
+    }
+}
+
 impl StdError for Error {
     fn description(&self) -> &str {
         match self {
             Error::Io(err) => err.description(),
             Error::Minification(err) => err,
-            Error::SyntaxHightlighting(err) => err.description(),
+            Error::Syntect(err) => err.description(),
+            Error::ThemeNotFound => "Theme not found",
         }
     }
 

@@ -20,33 +20,49 @@ struct Cli {
 
 #[derive(Debug, StructOpt)]
 enum Command {
+    /// Convert a markdown file containing the slides markup to a self-contained
+    /// HTML file
     #[structopt(name = "build")]
     Build {
+        /// Set the title of the webpage
         #[structopt(long = "title")]
         title: Option<String>,
+        /// Set the theme used to highlight text within code blocks
         #[structopt(long = "theme")]
         theme: Option<String>,
+        /// Add a directory to the paths searched for syntect themes (.tmTheme files)
         #[structopt(long = "theme-dir")]
         theme_dirs: Vec<PathBuf>,
+        /// Add custom css from the given file
         #[structopt(long = "css")]
         css: Option<PathBuf>,
+        /// Add custom javascript from the given file
         #[structopt(long = "js")]
         js: Option<PathBuf>,
     },
+    /// Serve a local markdown files containing the slides markup
     #[structopt(name = "serve")]
     Serve {
+        /// Change the port used by the server
         #[structopt(long = "port", short = "p", default_value = "8000")]
         port: u16,
+        /// Markdown file containing the slides markup
         #[structopt(parse(from_os_str))]
         input: PathBuf,
+        /// Whether the input file, the custom css file or the custom js file should be watched for
+        /// change
         #[structopt(long = "watch", short = "w")]
         watch: bool,
+        /// Set the theme used to highlight text within the code blocks
         #[structopt(long = "theme")]
         theme: Option<String>,
+        /// Add a directory to the paths searched for syntect themes (.tmTheme files)
         #[structopt(long = "theme-dir")]
         theme_dirs: Vec<PathBuf>,
+        /// Add custom css from the given file
         #[structopt(long = "css")]
         css: Option<PathBuf>,
+        /// Add custom js from the given file
         #[structopt(long = "js")]
         js: Option<PathBuf>,
     },

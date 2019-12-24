@@ -1,20 +1,26 @@
-use std::collections::HashMap;
-use std::fs;
-use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc, Mutex,
-};
-
+use crate::{error::Error, html};
+use futures::{FutureExt, StreamExt};
 use inotify::{EventMask, Inotify, WatchMask};
 use log::{debug, error, info};
 use serde::Serialize;
-use warp::ws::Message;
-use warp::{Filter, Future, Stream};
-
-use crate::error::Error;
-use crate::html;
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
+use tokio::{
+    fs,
+    sync::{mpsc, Mutex},
+};
+use warp::{
+    reject,
+    ws::{Message, WebSocket},
+    Filter,
+};
 
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -24,9 +30,9 @@ enum Event {
 }
 
 static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
-type Users = Arc<Mutex<HashMap<usize, futures::sync::mpsc::UnboundedSender<Message>>>>;
+type Users = Arc<Mutex<HashMap<usize, mpsc::UnboundedSender<Result<Message, warp::Error>>>>>;
 
-fn watch_files<P>(files: &[P], users: Users) -> Result<impl Future<Item = (), Error = ()>, Error>
+async fn watch_files<P>(files: Vec<P>, users: Users) -> Result<(), Error>
 where
     P: AsRef<Path>,
 {
@@ -34,24 +40,19 @@ where
     for file in files {
         inotify.add_watch(file, WatchMask::MODIFY)?;
     }
-    let stream = inotify
-        .event_stream(vec![0; 1024])
-        .for_each(move |event| {
-            if event.mask.contains(EventMask::MODIFY) {
-                let text = serde_json::to_string(&Event::Reload)?;
-                for (&id, tx) in users.lock().unwrap().iter() {
-                    debug!("Reloading user, user_id={}", id);
-                    tx.unbounded_send(Message::text(text.clone())).ok();
-                }
+    let mut buffer = [0; 32];
+    let mut stream = inotify.event_stream(&mut buffer)?;
+    while let Some(res) = stream.next().await {
+        let event = res?;
+        if event.mask.contains(EventMask::MODIFY) {
+            let text = serde_json::to_string(&Event::Reload)?;
+            for (&id, tx) in users.lock().await.iter() {
+                debug!("Reloading user, user_id={}", id);
+                tx.send(Ok(Message::text(text.clone()))).ok();
             }
-            Ok(())
-        })
-        .then(|result| {
-            debug!("Filesystem event stream closed");
-            result
-        })
-        .map_err(|err| error!("Filesystem event stream encountered an error: {}", err));
-    Ok(stream)
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone)]
@@ -71,26 +72,30 @@ struct Paths {
     js: Option<PathBuf>,
 }
 
-fn get_slides(
+fn convert_error<E: Into<Error>>(err: E) -> warp::Rejection {
+    reject::custom(err.into())
+}
+
+async fn get_slides(
     paths: Arc<Paths>,
     renderer: Arc<html::Renderer>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let css = if let Some(ref path) = paths.css {
-        let s = fs::read_to_string(path).map_err(warp::reject::custom)?;
+        let s = fs::read_to_string(path).await.map_err(convert_error)?;
         Some(s)
     } else {
         None
     };
     let js = if let Some(ref path) = paths.js {
-        let s = fs::read_to_string(path).map_err(warp::reject::custom)?;
+        let s = fs::read_to_string(path).await.map_err(convert_error)?;
         Some(s)
     } else {
         None
     };
-    let markdown = fs::read_to_string(&paths.input).map_err(warp::reject::custom)?;
-    let html = renderer
-        .render(markdown, css, js)
-        .map_err(warp::reject::custom)?;
+    let markdown = fs::read_to_string(&paths.input)
+        .await
+        .map_err(convert_error)?;
+    let html = renderer.render(markdown, css, js).map_err(convert_error)?;
     Ok(warp::reply::html(format!("{}", html)))
 }
 
@@ -103,8 +108,8 @@ const ERROR_MESSAGE: &str = r#"
 </html>
 "#;
 
-fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejection> {
-    if let Some(ref err) = err.find_cause::<Error>() {
+async fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejection> {
+    if let Some(ref err) = err.find::<Error>() {
         error!("{}", err);
         Ok(warp::reply::with_status(
             warp::reply::html(ERROR_MESSAGE),
@@ -117,7 +122,42 @@ fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejec
     }
 }
 
-pub fn start(config: Config) -> Result<(), Error> {
+async fn handle_ws(ws: WebSocket, users: Users) -> Result<(), Box<dyn std::error::Error>> {
+    let user_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
+
+    let (ws_tx, mut ws_rx) = ws.split();
+    let (tx, rx) = mpsc::unbounded_channel();
+    tokio::task::spawn(rx.forward(ws_tx).map(move |res| {
+        if let Err(e) = res {
+            error!(
+                "Failed to send over a websocket, user_id: {}, error: {}",
+                user_id, e
+            )
+        }
+    }));
+
+    {
+        debug!("User connected, user_id: {}", user_id);
+        users.lock().await.insert(user_id, tx);
+    }
+
+    while let Some(res) = ws_rx.next().await {
+        let msg = res?;
+        debug!(
+            "Message received from user, user_id: {}, msg: {:?}",
+            user_id, msg
+        );
+    }
+
+    {
+        debug!("User disconnected, user_id: {}", user_id);
+        users.lock().await.remove(&user_id);
+    }
+
+    Ok(())
+}
+
+pub async fn start(config: Config) -> Result<(), Error> {
     let port = config.port;
 
     let users = Arc::new(Mutex::new(HashMap::new()));
@@ -142,7 +182,7 @@ pub fn start(config: Config) -> Result<(), Error> {
             Arc::new(p)
         };
         let slides_index = warp::path("slides").and(warp::path::end());
-        warp::get2()
+        warp::get()
             .and(slides_index)
             .and(warp::any().map(move || paths.clone()))
             .and(warp::any().map(move || renderer.clone()))
@@ -153,44 +193,28 @@ pub fn start(config: Config) -> Result<(), Error> {
         let users = users.clone();
         let users = warp::any().map(move || users.clone());
         warp::path("ws")
-            .and(warp::ws2())
+            .and(warp::ws())
             .and(users)
-            .map(|ws: warp::ws::Ws2, users: Users| {
-                ws.on_upgrade(move |websocket| {
-                    let id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
-                    debug!("User connected, user_id={}", id);
-                    let (ws_tx, ws_rx) = websocket.split();
-                    let (tx, rx) = futures::sync::mpsc::unbounded();
-                    warp::spawn(
-                        rx.map_err(|()| -> warp::Error {
-                            unreachable!("unbounded rx never errors")
-                        })
-                        .forward(ws_tx)
-                        .map(|_tx_rx| ())
-                        .map_err(|err| error!("Failed transmit message from unbounded channel to websocket stream: {}", err)),
-                    );
-                    users.lock().unwrap().insert(id, tx);
-                    ws_rx
-                        .for_each(|_msg| Ok(()))
-                        .then(move |result| {
-                            debug!("User disconnected, user_id={}", id);
-                            users.lock().unwrap().remove(&id);
-                            result
-                        })
-                        .map_err(|err| {
-                            error!("Failed communication on the websocket stream: {}", err);
-                        })
-                })
+            .map(|ws: warp::ws::Ws, users: Users| {
+                let upgrade = move |socket| {
+                    async {
+                        if let Err(err) = handle_ws(socket, users).await {
+                            error!("Failed to handle websocket, error: {}", err);
+                        }
+                    }
+                };
+                ws.on_upgrade(upgrade)
             })
     };
-    let routes = slides.or(ws).recover(customize_error);
+    let routes = slides.or(ws).with(warp::log("deck")).recover(customize_error);
 
     // Configure server
     let addr: SocketAddr = ([127, 0, 0, 1], port).into();
     let server = warp::serve(routes).bind(addr);
-    info!("Starting server on {}", addr);
 
+    let mut slides_url = format!("{}/slides", addr);
     if config.watch {
+        slides_url.push_str("?watch=true");
         info!("Watching {} for changes", config.input.to_string_lossy());
         let mut files = vec![config.input];
         if let Some(css) = config.css {
@@ -199,11 +223,13 @@ pub fn start(config: Config) -> Result<(), Error> {
         if let Some(js) = config.js {
             files.push(js.clone());
         }
-        let f = watch_files(&files, users)?;
-        tokio::run(server.join(f).map(|_| ()));
-    } else {
-        tokio::run(server)
+        let f = watch_files(files, users);
+        tokio::task::spawn(f);
     }
+
+    info!("Go to {} to see your slides", slides_url);
+
+    server.await;
 
     Ok(())
 }

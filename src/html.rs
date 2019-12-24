@@ -105,7 +105,7 @@ impl Renderer {
         let mut in_code_block = false;
         let mut highlighter = None;
         let parser = parser.map(|event| match event {
-            Event::Start(Tag::Rule) => {
+            Event::Rule => {
                 Event::Html("</div>\n</div>\n<div class=\"slide\">\n<div class=\"content\">".into())
             }
             Event::Start(Tag::CodeBlock(ref lang)) => {

@@ -68,7 +68,8 @@ enum Command {
     },
 }
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let cli = Cli::from_args();
 
     pretty_env_logger::formatted_builder()
@@ -77,7 +78,7 @@ fn main() -> Result<(), Error> {
             if cli.verbose {
                 log::LevelFilter::Debug
             } else {
-                log::LevelFilter::Warn
+                log::LevelFilter::Info
             },
         )
         .init();
@@ -137,7 +138,7 @@ fn main() -> Result<(), Error> {
                 css,
                 js,
             };
-            server::start(config)?;
+            server::start(config).await?;
         }
     }
     Ok(())

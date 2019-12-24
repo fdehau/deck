@@ -1,14 +1,18 @@
-use std::error::Error as StdError;
-use std::fmt;
-use std::io;
+use std::{error::Error as StdError, fmt, io};
+use warp::reject;
 
 #[derive(Debug)]
 pub enum Error {
     Io(io::Error),
     Minification(&'static str),
     Syntect(syntect::LoadingError),
+    JsonSerialization(serde_json::error::Error),
     ThemeNotFound,
 }
+
+impl reject::Reject for Error {}
+
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -17,6 +21,7 @@ impl fmt::Display for Error {
             Io(err) => err.fmt(f),
             Minification(err) => write!(f, "{}", err),
             Syntect(err) => err.fmt(f),
+            JsonSerialization(err) => err.fmt(f),
             ThemeNotFound => write!(f, "Theme not found"),
         }
     }
@@ -34,17 +39,8 @@ impl From<syntect::LoadingError> for Error {
     }
 }
 
-impl StdError for Error {
-    fn description(&self) -> &str {
-        match self {
-            Error::Io(err) => err.description(),
-            Error::Minification(err) => err,
-            Error::Syntect(err) => err.description(),
-            Error::ThemeNotFound => "Theme not found",
-        }
-    }
-
-    fn cause(&self) -> Option<&StdError> {
-        None
+impl From<serde_json::error::Error> for Error {
+    fn from(err: serde_json::error::Error) -> Error {
+        Error::JsonSerialization(err)
     }
 }

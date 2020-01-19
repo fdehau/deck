@@ -206,7 +206,10 @@ pub async fn start(config: Config) -> Result<(), Error> {
                 ws.on_upgrade(upgrade)
             })
     };
-    let routes = slides.or(ws).with(warp::log("deck")).recover(customize_error);
+    let routes = slides
+        .or(ws)
+        .with(warp::log("deck"))
+        .recover(customize_error);
 
     // Configure server
     let addr: SocketAddr = ([127, 0, 0, 1], port).into();

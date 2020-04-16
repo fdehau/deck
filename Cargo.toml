@@ -9,22 +9,21 @@ edition = "2018"
 keywords = ["cli", "presentation", "slides", "markdown"]
 repository = "https://github.com/fdehau/deck"
 license = "MIT"
-exclude = ["tools/*"]
 
 [dependencies]
-pulldown-cmark = "0.6"
+pulldown-cmark = "0.7"
 structopt = "0.3"
 warp = "0.2"
 futures = "0.3"
 log = "0.4"
-pretty_env_logger = "0.3"
-minifier = "0.0.35"
+pretty_env_logger = "0.4"
+minifier = "0.0.36"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "0.2", features = ["macros"] }
 serde_json = "1.0"
 inotify = "0.8"
 
 [dependencies.syntect]
-version = "3.3"
+version = "4.1"
 default-features = false
-features = ["html", "assets", "dump-load"]
+features = ["html", "assets", "dump-load", "regex-fancy"]

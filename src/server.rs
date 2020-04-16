@@ -196,11 +196,9 @@ pub async fn start(config: Config) -> Result<(), Error> {
             .and(warp::ws())
             .and(users)
             .map(|ws: warp::ws::Ws, users: Users| {
-                let upgrade = move |socket| {
-                    async {
-                        if let Err(err) = handle_ws(socket, users).await {
-                            error!("Failed to handle websocket, error: {}", err);
-                        }
+                let upgrade = move |socket| async {
+                    if let Err(err) = handle_ws(socket, users).await {
+                        error!("Failed to handle websocket, error: {}", err);
                     }
                 };
                 ws.on_upgrade(upgrade)

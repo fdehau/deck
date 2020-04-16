@@ -1,15 +1,12 @@
-use std::fmt;
-use std::path::PathBuf;
-
-use pulldown_cmark::{html, Event, Options as MarkdownOptions, Parser, Tag};
-use syntect::easy::HighlightLines;
-use syntect::highlighting::{Theme, ThemeSet};
-use syntect::html::{
-    start_highlighted_html_snippet, styled_line_to_highlighted_html, IncludeBackground,
-};
-use syntect::parsing::SyntaxSet;
-
 use crate::error::Error;
+use pulldown_cmark::{html, CodeBlockKind, Event, Options as MarkdownOptions, Parser, Tag};
+use std::{fmt, path::PathBuf};
+use syntect::{
+    easy::HighlightLines,
+    highlighting::{Theme, ThemeSet},
+    html::{start_highlighted_html_snippet, styled_line_to_highlighted_html, IncludeBackground},
+    parsing::SyntaxSet,
+};
 
 const DEFAULT_THEME: &str = "base16-ocean.dark";
 
@@ -108,9 +105,13 @@ impl Renderer {
             Event::Rule => {
                 Event::Html("</div>\n</div>\n<div class=\"slide\">\n<div class=\"content\">".into())
             }
-            Event::Start(Tag::CodeBlock(ref lang)) => {
+            Event::Start(Tag::CodeBlock(ref kind)) => {
                 in_code_block = true;
                 let snippet = start_highlighted_html_snippet(&self.theme);
+                let lang = match kind {
+                    CodeBlockKind::Indented => "",
+                    CodeBlockKind::Fenced(lang) => lang,
+                };
                 if let Some(syntax) = self.syntax_set.find_syntax_by_token(lang) {
                     highlighter = Some(HighlightLines::new(syntax, &self.theme));
                 }

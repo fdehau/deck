@@ -1,6 +1,6 @@
 [package]
 name = "deck"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Florian Dehau <work@fdehau.com>"]
 description = """
 A command line tool to generate HTML presentations from Markdown documents

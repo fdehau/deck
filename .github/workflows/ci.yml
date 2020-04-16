@@ -1,0 +1,35 @@
+name: Continuous Integration
+on: [push, pull_request]
+jobs:
+  ci:
+    name: ${{ matrix.os }} CI
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - name: "Checking out sources"
+        uses: actions/checkout@v1
+      - name: "Installing rust toolchain"
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: default
+          toolchain: stable
+          override: true
+      - name: "Format"
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+      - name: "Check"
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+      - name: "Test"
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+      - name: "Clippy"
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy

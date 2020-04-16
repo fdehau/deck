@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/fdehau/deck.svg?branch=master)](https://travis-ci.com/fdehau/deck)
+[![Continuous Integration](https://github.com/fdehau/deck/workflows/Continuous%20Integration/badge.svg)](https://github.com/fdehau/deck/actions?query=workflow%3A%22Continuous+Integration%22)
 [![Crate Status](https://img.shields.io/crates/v/deck.svg)](https://crates.io/crates/deck)
 [![Docs Status](https://docs.rs/deck/badge.svg)](https://docs.rs/crate/deck/)
 

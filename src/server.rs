@@ -100,6 +100,7 @@ async fn get_slides(
 }
 
 const ERROR_MESSAGE: &str = r#"
+<!doctype html>
 <html>
 <body>
     <h1>Deck encountered an expected error</h1>

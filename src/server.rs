@@ -204,8 +204,19 @@ pub async fn start(config: Config) -> Result<(), Error> {
                 ws.on_upgrade(upgrade)
             })
     };
+
+    let assets = {
+        let assets_path: PathBuf = config
+            .input
+            .parent()
+            .unwrap_or_else(|| Path::new("/"))
+            .to_path_buf();
+        warp::fs::dir(assets_path)
+    };
+
     let routes = slides
         .or(ws)
+        .or(assets)
         .with(warp::log("deck"))
         .recover(customize_error);
 

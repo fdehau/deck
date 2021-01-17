@@ -19,6 +19,7 @@ pub struct Output {
 
 impl fmt::Display for Output {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "<!doctype html>")?;
         writeln!(f, "<html>")?;
         writeln!(f, "<head>")?;
 

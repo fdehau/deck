@@ -19,7 +19,7 @@ log = "0.4"
 pretty_env_logger = "0.4"
 minifier = "0.0.36"
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "0.2", features = ["macros"] }
+tokio = { version = "1.13", features = ["macros"] }
 serde_json = "1.0"
 inotify = "0.8"
 
